@@ -29,14 +29,14 @@ Before building, ensure these tools are installed:
 
 If Rust is not in PATH, it may still be installed. Check:
 
-```powershell
-ls C:\Users\$env:USERNAME\.cargo\bin\rustc.exe
+```bash
+ls ~/.cargo/bin/rustc.exe
 ```
 
 Add to PATH if needed:
 
-```powershell
-$env:PATH = "C:\Users\$env:USERNAME\.cargo\bin;" + $env:PATH
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
 ```
 
 ## Build Order
@@ -50,7 +50,7 @@ $env:PATH = "C:\Users\$env:USERNAME\.cargo\bin;" + $env:PATH
 
 The CLI is a Go application located in `packages/opencode/`.
 
-```powershell
+```bash
 cd packages/opencode
 bun install --no-cache
 bun run script/build.ts --single --skip-install
@@ -80,33 +80,35 @@ packages/opencode/dist/
 
 The desktop app is a Tauri application with SolidJS frontend.
 
-### 2.1 Install Dependencies
+### 2.1 Fix TypeScript Declaration (REQUIRED)
 
-```powershell
+Before building, fix the custom-elements.d.ts issue:
+
+```bash
+cp packages/ui/src/custom-elements.d.ts packages/app/src/custom-elements.d.ts
+```
+
+### 2.2 Install Dependencies
+
+```bash
 cd packages/desktop
 bun install --no-cache
 ```
 
-### 2.2 Prepare Sidecar Binary
+### 2.3 Prepare Sidecar Binary
 
 The desktop app requires the CLI as an embedded "sidecar" binary:
 
-```powershell
-# Create sidecars directory
-mkdir -p src-tauri/sidecars
-
-# Copy CLI with required naming convention
-cp packages/opencode/dist/opencode-windows-x64/bin/opencode.exe `
-   packages/desktop/src-tauri/sidecars/opencode-cli.exe
-
-# Also copy with target triple name (required by Tauri)
-cp packages/desktop/src-tauri/sidecars/opencode-cli.exe `
-   packages/desktop/src-tauri/sidecars/opencode-cli-x86_64-pc-windows-msvc.exe
+```bash
+# Create sidecars directory and copy CLI
+mkdir -p packages/desktop/src-tauri/sidecars
+cp packages/opencode/dist/opencode-windows-x64/bin/opencode.exe packages/desktop/src-tauri/sidecars/opencode-cli.exe
+cp packages/desktop/src-tauri/sidecars/opencode-cli.exe packages/desktop/src-tauri/sidecars/opencode-cli-x86_64-pc-windows-msvc.exe
 ```
 
-### 2.3 Build Desktop App
+### 2.4 Build Desktop App
 
-```powershell
+```bash
 cd packages/desktop
 bun run tauri build
 ```
@@ -128,9 +130,8 @@ packages/desktop/src-tauri/target/release/
 
 Rust is installed but not in PATH:
 
-```powershell
-$env:CARGO_HOME = "C:\Users\$env:USERNAME\.cargo"
-$env:PATH = "$env:CARGO_HOME\bin;" + $env:PATH
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
 ```
 
 ### Error: "sidecars\opencode-cli-\*.exe doesn't exist"
@@ -140,42 +141,36 @@ The CLI must be copied with the exact name Tauri expects:
 - `opencode-cli.exe` (base name)
 - `opencode-cli-x86_64-pc-windows-msvc.exe` (target triple)
 
-### Error: "custom-elements.d.ts" TypeScript error
-
-Fix by copying the correct declaration file:
-
-```powershell
-cp packages/ui/src/custom-elements.d.ts packages/app/src/custom-elements.d.ts
-```
-
 ### Build Hangs or Times Out
 
 Tauri builds can take 5-15 minutes on first run. The Rust compilation is CPU-intensive. Monitor progress:
 
-```powershell
+```bash
 # Check if cargo is still running
-Get-Process | Where-Object { $_.ProcessName -like '*cargo*' -or $_.ProcessName -like '*rustc*' }
+ps aux | grep -E 'cargo|rustc'
 ```
 
 ## Quick Reference
 
-```powershell
-# Full build from root
-cd D:\GitRepo\MyOpenCode
+```bash
+# Full build from root (D:\GitRepo\MyOpenCode)
 
 # 1. Build CLI
 cd packages/opencode
 bun install --no-cache
 bun run script/build.ts --single --skip-install
 
-# 2. Prepare sidecar
-cd ../desktop
-mkdir -p src-tauri/sidecars
-cp ../opencode/dist/opencode-windows-x64/bin/opencode.exe src-tauri/sidecars/opencode-cli.exe
-cp src-tauri/sidecars/opencode-cli.exe src-tauri/sidecars/opencode-cli-x86_64-pc-windows-msvc.exe
+# 2. Fix TypeScript declaration (REQUIRED)
+cd ../..
+cp packages/ui/src/custom-elements.d.ts packages/app/src/custom-elements.d.ts
 
-# 3. Build desktop
-$env:PATH = "C:\Users\$env:USERNAME\.cargo\bin;" + $env:PATH
+# 3. Prepare sidecar
+mkdir -p packages/desktop/src-tauri/sidecars
+cp packages/opencode/dist/opencode-windows-x64/bin/opencode.exe packages/desktop/src-tauri/sidecars/opencode-cli.exe
+cp packages/desktop/src-tauri/sidecars/opencode-cli.exe packages/desktop/src-tauri/sidecars/opencode-cli-x86_64-pc-windows-msvc.exe
+
+# 4. Build desktop
+cd packages/desktop
 bun install --no-cache
 bun run tauri build
 ```

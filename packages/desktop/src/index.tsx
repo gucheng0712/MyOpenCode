@@ -117,6 +117,17 @@ const createPlatform = (): Platform => {
     },
     async openPath(path: string, app?: string) {
       const os = ostype()
+
+      // For terminals, use the special open_in_terminal command which handles
+      // launching with correct arguments to keep the window open and set working directory
+      if (app) {
+        const terminalApps = ["powershell", "terminal", "iterm", "iterm2", "ghostty"]
+        if (terminalApps.includes(app.toLowerCase())) {
+          const success = await commands.openInTerminal(app, path).catch(() => false)
+          if (success) return
+        }
+      }
+
       if (os === "windows") {
         const resolvedApp = (app && (await commands.resolveAppPath(app))) || app
         const resolvedPath = await (async () => {

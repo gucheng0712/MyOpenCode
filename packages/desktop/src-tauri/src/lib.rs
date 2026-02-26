@@ -179,6 +179,60 @@ fn resolve_app_path(app_name: &str) -> Option<String> {
     }
 }
 
+#[tauri::command]
+#[specta::specta]
+fn open_in_terminal(app_name: &str, path: &str) -> bool {
+    let path = std::path::Path::new(path);
+    let path_str = path.to_string_lossy();
+
+    #[cfg(target_os = "windows")]
+    {
+        let app_lower = app_name.to_lowercase();
+        if app_lower == "powershell" || app_lower == "powershell.exe" {
+            // Use start command to launch PowerShell in a new window with the correct directory
+            // -NoExit keeps the window open after the command completes
+            let ps_cmd = format!("Set-Location -Path '{}'", path_str.replace("'", "''"));
+            let result = Command::new("cmd")
+                .args([
+                    "/c",
+                    "start",
+                    "powershell",
+                    "-NoExit",
+                    "-Command",
+                    &ps_cmd,
+                ])
+                .spawn();
+            return result.is_ok();
+        }
+        return false;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let app_lower = app_name.to_lowercase();
+        // For macOS terminals, use open -a with the app and pass the directory
+        if app_lower == "terminal" || app_lower == "iterm" || app_lower == "iterm2" || app_lower == "ghostty" {
+            let result = Command::new("open")
+                .args(["-a", app_name, &path_str])
+                .spawn();
+            return result.is_ok();
+        }
+        return false;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let _ = (app_name, path_str);
+        return false;
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    {
+        let _ = (app_name, path_str);
+        return false;
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn check_macos_app(app_name: &str) -> bool {
     // Check common installation locations
@@ -373,7 +427,8 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             markdown::parse_markdown_command,
             check_app_exists,
             wsl_path,
-            resolve_app_path
+            resolve_app_path,
+            open_in_terminal
         ])
         .events(tauri_specta::collect_events![
             LoadingWindowComplete,

@@ -63,6 +63,7 @@ impl MainWindow {
             window.__OPENCODE__ ??= {{}};
             window.__OPENCODE__.updaterEnabled = {UPDATER_ENABLED};
             window.__OPENCODE__.wsl = {wsl_enabled};
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
           "#
         ));
 
@@ -139,7 +140,10 @@ impl LoadingWindow {
         .center()
         .resizable(false)
         .inner_size(640.0, 480.0)
-        .visible(true);
+        .visible(true)
+        .initialization_script(
+            r#"document.addEventListener('contextmenu', (e) => e.preventDefault());"#,
+        );
 
         Ok(Self(window_builder.build()?))
     }

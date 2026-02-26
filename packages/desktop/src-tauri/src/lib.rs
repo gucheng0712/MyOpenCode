@@ -187,20 +187,15 @@ fn open_in_terminal(app_name: &str, path: &str) -> bool {
 
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
         let app_lower = app_name.to_lowercase();
         if app_lower == "powershell" || app_lower == "powershell.exe" {
-            // Use start command to launch PowerShell in a new window with the correct directory
-            // -NoExit keeps the window open after the command completes
             let ps_cmd = format!("Set-Location -Path '{}'", path_str.replace("'", "''"));
             let result = Command::new("cmd")
-                .args([
-                    "/c",
-                    "start",
-                    "powershell",
-                    "-NoExit",
-                    "-Command",
-                    &ps_cmd,
-                ])
+                .args(["/c", "start", "powershell", "-NoExit", "-Command", &ps_cmd])
+                .creation_flags(CREATE_NO_WINDOW)
                 .spawn();
             return result.is_ok();
         }
@@ -210,7 +205,6 @@ fn open_in_terminal(app_name: &str, path: &str) -> bool {
     #[cfg(target_os = "macos")]
     {
         let app_lower = app_name.to_lowercase();
-        // For macOS terminals, use open -a with the app and pass the directory
         if app_lower == "terminal" || app_lower == "iterm" || app_lower == "iterm2" || app_lower == "ghostty" {
             let result = Command::new("open")
                 .args(["-a", app_name, &path_str])
